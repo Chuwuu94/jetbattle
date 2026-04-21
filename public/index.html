@@ -1,0 +1,763 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Jet Battle</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#0f172a;color:#e2e8f0;min-height:100vh}
+.screen{display:none;min-height:100vh;padding:1rem}
+.screen.active{display:flex;flex-direction:column;align-items:center}
+
+/* AUTH */
+.auth-box{background:#1e293b;border:1px solid #334155;border-radius:12px;padding:2rem;width:100%;max-width:380px;margin-top:3rem}
+.auth-box h1{font-size:24px;font-weight:700;text-align:center;margin-bottom:4px;color:#38bdf8}
+.auth-box .sub{font-size:13px;color:#94a3b8;text-align:center;margin-bottom:1.5rem}
+.field{margin-bottom:1rem}
+.field label{display:block;font-size:13px;color:#94a3b8;margin-bottom:4px}
+.field input{width:100%;padding:10px 12px;background:#0f172a;border:1px solid #334155;border-radius:8px;color:#e2e8f0;font-size:14px;outline:none}
+.field input:focus{border-color:#38bdf8}
+.btn{width:100%;padding:10px;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;transition:opacity 0.15s}
+.btn-primary{background:#38bdf8;color:#0f172a}
+.btn-primary:hover{opacity:0.9}
+.btn-secondary{background:#1e293b;color:#e2e8f0;border:1px solid #334155;margin-top:8px}
+.btn-secondary:hover{background:#334155}
+.btn-danger{background:#ef4444;color:#fff;margin-top:8px}
+.error-msg{font-size:13px;color:#ef4444;margin-bottom:10px;text-align:center;min-height:18px}
+.toggle-auth{font-size:13px;color:#94a3b8;text-align:center;margin-top:1rem}
+.toggle-auth a{color:#38bdf8;cursor:pointer;text-decoration:underline}
+
+/* LOBBY */
+.lobby-box{background:#1e293b;border:1px solid #334155;border-radius:12px;padding:2rem;width:100%;max-width:480px;margin-top:2rem}
+.lobby-box h2{font-size:18px;font-weight:600;margin-bottom:1rem}
+.user-bar{display:flex;justify-content:space-between;align-items:center;margin-bottom:1.5rem;padding-bottom:1rem;border-bottom:1px solid #334155}
+.user-bar .name{font-size:15px;font-weight:600;color:#38bdf8}
+.setting-group{margin-bottom:1rem}
+.setting-group label{display:block;font-size:12px;color:#94a3b8;margin-bottom:6px}
+.seg-ctrl{display:flex;gap:0;border:1px solid #334155;border-radius:8px;overflow:hidden}
+.seg-ctrl button{flex:1;padding:7px 4px;background:#0f172a;color:#94a3b8;border:none;font-size:12px;cursor:pointer;border-right:1px solid #334155}
+.seg-ctrl button:last-child{border-right:none}
+.seg-ctrl button.active{background:#38bdf8;color:#0f172a;font-weight:600}
+.invite-box{background:#0f172a;border:1px solid #334155;border-radius:8px;padding:1rem;margin-top:1rem}
+.invite-box .link{font-size:12px;color:#38bdf8;word-break:break-all;margin:6px 0}
+.invite-box .hint{font-size:12px;color:#94a3b8}
+.waiting-pulse{display:flex;align-items:center;gap:8px;font-size:13px;color:#94a3b8;margin-top:10px}
+.dot{width:8px;height:8px;border-radius:50%;background:#38bdf8;animation:pulse 1.2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.3}}
+
+/* GAME */
+.game-wrap{width:100%;max-width:1000px;margin-top:1rem}
+.game-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;padding:8px 12px;background:#1e293b;border-radius:8px}
+.game-header .title{font-size:14px;font-weight:600}
+.game-header .turn-badge{font-size:12px;padding:4px 10px;border-radius:20px;background:#38bdf8;color:#0f172a;font-weight:600}
+.game-header .turn-badge.waiting{background:#334155;color:#94a3b8}
+.phase-banner{text-align:center;padding:10px;background:#1e293b;border-radius:8px;margin-bottom:12px;font-size:14px;color:#94a3b8}
+.phase-banner b{color:#e2e8f0}
+.boards-row{display:flex;gap:16px;flex-wrap:wrap;justify-content:center}
+.board-section{display:flex;flex-direction:column;align-items:center;gap:6px}
+.board-title{font-size:12px;font-weight:600;color:#94a3b8;text-align:center}
+.board-sub{font-size:11px;color:#475569;text-align:center;margin-top:-4px}
+table.grid{border-collapse:collapse}
+table.grid td{width:32px;height:32px;border:1px solid #1e293b;text-align:center;vertical-align:middle;font-size:11px;font-weight:700;cursor:default;background:#0f172a;color:#e2e8f0;transition:background 0.1s}
+table.grid td.hdr{background:#1e293b;color:#475569;font-size:10px;font-weight:500;cursor:default}
+table.grid td.ghost{background:#1d4ed8;cursor:crosshair}
+table.grid td.ghost-invalid{background:#7f1d1d;cursor:crosshair}
+table.grid td.locked-ok{background:#065f46;cursor:pointer}
+table.grid td.locked-ok-head{background:#059669;color:#fff;cursor:pointer}
+table.grid td.locked-bad{background:#7f1d1d;cursor:pointer}
+table.grid td.ac-body{background:#1d4ed8}
+table.grid td.ac-head{background:#2563eb;color:#fff}
+table.grid td.opp-H{background:#d97706;color:#fff}
+table.grid td.opp-M{background:#374151;color:#6b7280}
+table.grid td.opp-D{background:#dc2626;color:#fff}
+table.grid td.own-H{background:#92400e;color:#fcd34d}
+table.grid td.own-M{background:#1f2937;color:#4b5563}
+table.grid td.own-D{background:#991b1b;color:#fca5a5}
+table.grid td.shootable{cursor:crosshair}
+table.grid td.shootable:hover{background:#1e3a5f}
+.place-controls{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px}
+.place-controls button{padding:7px 14px;border:1px solid #334155;background:#1e293b;color:#e2e8f0;border-radius:8px;font-size:12px;cursor:pointer}
+.place-controls button:hover{background:#334155}
+.place-controls button.confirm-btn{background:#065f46;border-color:#059669;color:#6ee7b7}
+.info-bar{padding:8px 12px;border-radius:8px;font-size:12px;margin-bottom:10px}
+.info-bar.neutral{background:#1e293b;color:#94a3b8}
+.info-bar.good{background:#064e3b;color:#6ee7b7}
+.info-bar.bad{background:#450a0a;color:#fca5a5}
+.ac-chips{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+.ac-chip{font-size:11px;padding:3px 8px;border-radius:6px;border:1px solid #334155;background:#1e293b;color:#64748b}
+.ac-chip.done{background:#1e3a5f;color:#38bdf8;border-color:#1d4ed8}
+.ac-chip.active{background:#064e3b;color:#34d399;border-color:#059669;font-weight:600}
+.shot-controls{display:flex;gap:8px;align-items:center;margin-bottom:10px;flex-wrap:wrap}
+.shot-controls input{padding:8px 10px;background:#0f172a;border:1px solid #334155;border-radius:8px;color:#e2e8f0;font-size:14px;width:80px;text-transform:uppercase;outline:none}
+.shot-controls input:focus{border-color:#38bdf8}
+.shot-controls button{padding:8px 14px;border-radius:8px;font-size:12px;cursor:pointer;border:1px solid #334155;background:#1e293b;color:#e2e8f0}
+.shot-controls button.shoot-btn{background:#1d4ed8;border-color:#2563eb;color:#fff}
+.attempts-row{display:flex;gap:5px;margin-bottom:10px}
+.att-dot{width:11px;height:11px;border-radius:50%}
+.att-dot.avail{background:#38bdf8}
+.att-dot.used{background:#334155}
+.stats-row{display:flex;gap:8px;margin-bottom:10px}
+.stat-box{flex:1;background:#1e293b;border-radius:8px;padding:8px;text-align:center}
+.stat-box .sv{font-size:18px;font-weight:700;color:#e2e8f0}
+.stat-box .sl{font-size:11px;color:#64748b}
+.chat-box{background:#1e293b;border-radius:8px;padding:10px;margin-top:12px;max-width:600px;width:100%}
+.chat-msgs{max-height:80px;overflow-y:auto;margin-bottom:8px;font-size:12px}
+.chat-msgs div{padding:2px 0;color:#94a3b8}
+.chat-msgs div b{color:#38bdf8}
+.chat-input-row{display:flex;gap:6px}
+.chat-input-row input{flex:1;padding:6px 8px;background:#0f172a;border:1px solid #334155;border-radius:6px;color:#e2e8f0;font-size:12px;outline:none}
+.chat-input-row button{padding:6px 10px;background:#334155;border:none;border-radius:6px;color:#e2e8f0;font-size:12px;cursor:pointer}
+.legend-row{display:flex;gap:10px;flex-wrap:wrap;margin:6px 0;font-size:11px;color:#64748b}
+.leg{display:flex;align-items:center;gap:4px}
+.leg-sq{width:13px;height:13px;border-radius:2px;display:inline-block;font-size:8px;text-align:center;line-height:13px;font-weight:700}
+.gameover-banner{background:#1e293b;border:1px solid #334155;border-radius:12px;padding:2rem;text-align:center;margin-top:1rem;max-width:480px;width:100%}
+.gameover-banner h2{font-size:22px;font-weight:700;color:#38bdf8;margin-bottom:6px}
+.gameover-banner p{font-size:14px;color:#94a3b8;margin-bottom:1rem}
+.disconnect-banner{background:#450a0a;border:1px solid #7f1d1d;border-radius:8px;padding:12px;text-align:center;font-size:13px;color:#fca5a5;margin-bottom:12px}
+</style>
+</head>
+<body>
+
+<!-- AUTH SCREEN -->
+<div id="screen-auth" class="screen active">
+  <div class="auth-box">
+    <h1>✈ Jet Battle</h1>
+    <p class="sub">Sign in to play online</p>
+    <div id="auth-error" class="error-msg"></div>
+    <div class="field"><label>Username</label><input id="auth-username" type="text" placeholder="Enter username" autocomplete="username"></div>
+    <div class="field"><label>Password</label><input id="auth-password" type="password" placeholder="Enter password" autocomplete="current-password"></div>
+    <button class="btn btn-primary" onclick="App.submitAuth()">Sign In</button>
+    <button class="btn btn-secondary" id="auth-toggle-btn" onclick="App.toggleAuthMode()">Don't have an account? Register</button>
+    <p id="auth-mode-hint" style="font-size:12px;color:#475569;text-align:center;margin-top:8px"></p>
+  </div>
+</div>
+
+<!-- LOBBY SCREEN -->
+<div id="screen-lobby" class="screen">
+  <div class="lobby-box">
+    <div class="user-bar">
+      <span class="name" id="lobby-username"></span>
+      <button onclick="App.logout()" style="font-size:12px;padding:5px 10px;border:1px solid #334155;background:transparent;color:#94a3b8;border-radius:6px;cursor:pointer">Log out</button>
+    </div>
+    <h2>Create a game</h2>
+    <div class="setting-group">
+      <label>Board size</label>
+      <div class="seg-ctrl" id="seg-bs">
+        <button onclick="App.setSetting('bs',7)" data-val="7">7×7</button>
+        <button onclick="App.setSetting('bs',9)" data-val="9" class="active">9×9</button>
+        <button onclick="App.setSetting('bs',11)" data-val="11">11×11</button>
+        <button onclick="App.setSetting('bs',13)" data-val="13">13×13</button>
+      </div>
+    </div>
+    <div class="setting-group">
+      <label>Aircraft per player <span id="ac-suggest" style="color:#38bdf8"></span></label>
+      <div class="seg-ctrl" id="seg-na">
+        <button onclick="App.setSetting('na',1)" data-val="1">1</button>
+        <button onclick="App.setSetting('na',2)" data-val="2">2</button>
+        <button onclick="App.setSetting('na',3)" data-val="3" class="active">3</button>
+        <button onclick="App.setSetting('na',4)" data-val="4">4</button>
+        <button onclick="App.setSetting('na',5)" data-val="5">5</button>
+      </div>
+    </div>
+    <div class="setting-group">
+      <label>Shots per turn</label>
+      <div class="seg-ctrl" id="seg-apt">
+        <button onclick="App.setSetting('apt',1)" data-val="1" class="active">1</button>
+        <button onclick="App.setSetting('apt',2)" data-val="2">2</button>
+        <button onclick="App.setSetting('apt',3)" data-val="3">3</button>
+      </div>
+    </div>
+    <button class="btn btn-primary" onclick="App.createGame()" style="margin-top:6px">Create game & get invite link</button>
+    <div id="invite-section" style="display:none">
+      <div class="invite-box">
+        <div class="hint">Share this link with your opponent:</div>
+        <div class="link" id="invite-link"></div>
+        <button onclick="App.copyLink()" style="font-size:12px;padding:5px 10px;border:1px solid #334155;background:#0f172a;color:#38bdf8;border-radius:6px;cursor:pointer;margin-top:4px">Copy link</button>
+        <div class="waiting-pulse" style="margin-top:10px"><div class="dot"></div><span>Waiting for opponent to join...</span></div>
+      </div>
+    </div>
+    <div id="join-section" style="margin-top:1rem;display:none">
+      <div style="font-size:13px;color:#94a3b8;margin-bottom:8px">Or join with a game code:</div>
+      <div style="display:flex;gap:8px">
+        <input id="join-code" type="text" placeholder="Game code (e.g. A3F2B1C0)" style="flex:1;padding:9px;background:#0f172a;border:1px solid #334155;border-radius:8px;color:#e2e8f0;font-size:13px;text-transform:uppercase;outline:none">
+        <button onclick="App.joinByCode()" style="padding:9px 14px;background:#1d4ed8;border:none;border-radius:8px;color:#fff;font-size:13px;cursor:pointer">Join</button>
+      </div>
+    </div>
+    <button onclick="document.getElementById('join-section').style.display=document.getElementById('join-section').style.display==='none'?'block':'none'" style="font-size:12px;margin-top:10px;background:transparent;border:none;color:#475569;cursor:pointer;text-decoration:underline">Have a game code? Join here</button>
+  </div>
+</div>
+
+<!-- GAME SCREEN -->
+<div id="screen-game" class="screen">
+  <div class="game-wrap">
+    <div class="game-header">
+      <span class="title" id="game-title">Jet Battle</span>
+      <span class="turn-badge" id="turn-badge">—</span>
+    </div>
+    <div id="disconnect-banner" class="disconnect-banner" style="display:none">Opponent disconnected. Waiting for reconnect...</div>
+    <div id="game-content"></div>
+  </div>
+</div>
+
+<script>
+const CL=['','A','B','C','D','E','F','G','H','I','J','K','L','M'];
+const SHAPE_UP    = { cells: [[0,2],[1,0],[1,1],[1,2],[1,3],[1,4],[2,2],[3,1],[3,2],[3,3]], headIdx: 0 };
+const SHAPE_DOWN  = { cells: [[0,1],[0,2],[0,3],[1,2],[2,0],[2,1],[2,2],[2,3],[2,4],[3,2]], headIdx: 9 };
+const SHAPE_RIGHT = { cells: [[2,3],[0,2],[1,2],[2,2],[3,2],[4,2],[2,1],[1,0],[2,0],[3,0]], headIdx: 0 };
+const SHAPE_LEFT  = { cells: [[2,0],[1,3],[2,3],[3,3],[2,2],[0,1],[1,1],[2,1],[3,1],[4,1]], headIdx: 0 };
+const SHAPES = { up: SHAPE_UP, down: SHAPE_DOWN, right: SHAPE_RIGHT, left: SHAPE_LEFT };
+const DIRS = ['up','right','down','left'];
+const AC_SUGGEST = {7:2,9:3,11:4,13:5};
+
+function gc(dir,or,oc){return SHAPES[dir].cells.map(([r,c])=>[or+r,oc+c]);}
+function gh(dir,or,oc){const[r,c]=SHAPES[dir].cells[SHAPES[dir].headIdx];return[or+r,oc+c];}
+function iv(cells,g){return cells.every(([r,c])=>r>=0&&r<g&&c>=0&&c<g);}
+function ov(cells,others){const s=new Set(others.map(([r,c])=>r+','+c));return cells.some(([r,c])=>s.has(r+','+c));}
+function apc(placed){return placed.flatMap(a=>gc(a.dir,a.r,a.c));}
+function r2c(r,c){return CL[c+1]+(r+1);}
+
+// App state
+let token = localStorage.getItem('jb_token');
+let username = localStorage.getItem('jb_username');
+let authMode = 'login';
+let settings = { bs: 9, na: 3, apt: 1 };
+let ws = null;
+let gameId = null;
+let myRole = null;
+let gameInfo = null;
+let myPlaced = [];
+let myShots = {};
+let oppShots = {};
+let myDestroyed = 0;
+let oppDestroyed = 0;
+let myTurn = false;
+let attemptsLeft = 1;
+let ri = 0;
+let hov = null;
+let locked = null;
+let lockedValid = false;
+let chatMsgs = [];
+let gameOver = false;
+let oppFleet = [];
+
+const App = {
+  init() {
+    // Check if joining via link
+    const path = window.location.pathname;
+    const match = path.match(/\/game\/([A-Z0-9]{8})/i);
+    if (match) {
+      sessionStorage.setItem('jb_join_game', match[1].toUpperCase());
+    }
+    if (token && username) {
+      App.showLobby();
+    }
+  },
+
+  showScreen(id) {
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    document.getElementById('screen-' + id).classList.add('active');
+  },
+
+  toggleAuthMode() {
+    authMode = authMode === 'login' ? 'register' : 'login';
+    document.getElementById('auth-toggle-btn').textContent =
+      authMode === 'login' ? "Don't have an account? Register" : 'Already have an account? Sign in';
+    document.getElementById('auth-error').textContent = '';
+    document.querySelector('.auth-box .sub').textContent =
+      authMode === 'login' ? 'Sign in to play online' : 'Create your account';
+    document.querySelector('.btn-primary').textContent =
+      authMode === 'login' ? 'Sign In' : 'Register';
+  },
+
+  async submitAuth() {
+    const u = document.getElementById('auth-username').value.trim();
+    const p = document.getElementById('auth-password').value;
+    const errEl = document.getElementById('auth-error');
+    errEl.textContent = '';
+    if (!u || !p) { errEl.textContent = 'Please fill in both fields'; return; }
+
+    try {
+      const res = await fetch('/api/' + (authMode === 'login' ? 'login' : 'register'), {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: u, password: p })
+      });
+      const data = await res.json();
+      if (!res.ok) { errEl.textContent = data.error; return; }
+      token = data.token; username = data.username;
+      localStorage.setItem('jb_token', token);
+      localStorage.setItem('jb_username', username);
+      App.showLobby();
+    } catch { errEl.textContent = 'Connection error'; }
+  },
+
+  logout() {
+    token = null; username = null;
+    localStorage.removeItem('jb_token'); localStorage.removeItem('jb_username');
+    if (ws) ws.close();
+    App.showScreen('auth');
+  },
+
+  showLobby() {
+    document.getElementById('lobby-username').textContent = username;
+    App.updateSegment('seg-bs', settings.bs);
+    App.updateSegment('seg-na', settings.na);
+    App.updateSegment('seg-apt', settings.apt);
+    App.updateAcSuggest();
+    document.getElementById('invite-section').style.display = 'none';
+    App.showScreen('lobby');
+
+    // Auto-join if came via link
+    const joinCode = sessionStorage.getItem('jb_join_game');
+    if (joinCode) {
+      sessionStorage.removeItem('jb_join_game');
+      App.joinGame(joinCode);
+    }
+  },
+
+  setSetting(key, val) {
+    settings[key] = val;
+    App.updateSegment('seg-' + key, val);
+    if (key === 'bs') { settings.na = AC_SUGGEST[val] || 3; App.updateSegment('seg-na', settings.na); }
+    App.updateAcSuggest();
+  },
+
+  updateSegment(id, val) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.querySelectorAll('button').forEach(b => {
+      b.classList.toggle('active', +b.dataset.val === val || b.dataset.val === String(val));
+    });
+  },
+
+  updateAcSuggest() {
+    const el = document.getElementById('ac-suggest');
+    if (el) el.textContent = '(suggested: ' + (AC_SUGGEST[settings.bs] || 3) + ')';
+  },
+
+  async createGame() {
+    try {
+      const res = await fetch('/api/games', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+        body: JSON.stringify({ settings })
+      });
+      const data = await res.json();
+      if (!res.ok) { alert(data.error); return; }
+      gameId = data.gameId;
+      const link = window.location.origin + '/game/' + gameId;
+      document.getElementById('invite-link').textContent = link;
+      document.getElementById('invite-section').style.display = 'block';
+      App.connectWS(gameId);
+    } catch { alert('Connection error'); }
+  },
+
+  copyLink() {
+    const link = document.getElementById('invite-link').textContent;
+    navigator.clipboard.writeText(link).then(() => alert('Link copied!'));
+  },
+
+  joinByCode() {
+    const code = document.getElementById('join-code').value.trim().toUpperCase();
+    if (!code) return;
+    App.joinGame(code);
+  },
+
+  joinGame(gid) {
+    gameId = gid;
+    App.connectWS(gid);
+  },
+
+  connectWS(gid) {
+    const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+    ws = new WebSocket(proto + '://' + location.host);
+
+    ws.onopen = () => {
+      ws.send(JSON.stringify({ type: 'auth', token }));
+    };
+
+    ws.onmessage = (e) => {
+      const msg = JSON.parse(e.data);
+      App.handleWS(msg);
+    };
+
+    ws.onclose = () => {
+      document.getElementById('disconnect-banner').style.display = 'block';
+    };
+  },
+
+  handleWS(msg) {
+    if (msg.type === 'authed') {
+      ws.send(JSON.stringify({ type: 'join', gameId }));
+      return;
+    }
+
+    if (msg.type === 'joined') {
+      myRole = msg.role;
+      gameInfo = msg.game;
+      App.startPlacement();
+      return;
+    }
+
+    if (msg.type === 'game_start') {
+      gameInfo = msg.game;
+      document.getElementById('game-title').textContent =
+        gameInfo.hostName + ' vs ' + gameInfo.guestName;
+      App.renderPlacement();
+      return;
+    }
+
+    if (msg.type === 'placed') {
+      myPlaced = msg.placed;
+      if (msg.ready) App.showWaitingForOpponent();
+      else App.renderPlacement();
+      return;
+    }
+
+    if (msg.type === 'battle_start') {
+      myTurn = msg.yourTurn;
+      attemptsLeft = msg.attemptsLeft;
+      App.startBattle(msg.firstPlayer);
+      return;
+    }
+
+    if (msg.type === 'shot_result') {
+      App.handleShotResult(msg);
+      return;
+    }
+
+    if (msg.type === 'chat') {
+      chatMsgs.push(msg);
+      App.renderChat();
+      return;
+    }
+
+    if (msg.type === 'opponent_disconnected') {
+      document.getElementById('disconnect-banner').style.display = 'block';
+      return;
+    }
+
+    if (msg.type === 'error') {
+      console.warn('Server error:', msg.message);
+    }
+  },
+
+  startPlacement() {
+    myPlaced = []; myShots = {}; oppShots = {};
+    myDestroyed = 0; oppDestroyed = 0;
+    myTurn = false; attemptsLeft = 1;
+    ri = 0; hov = null; locked = null; lockedValid = false;
+    chatMsgs = []; gameOver = false; oppFleet = [];
+    document.getElementById('disconnect-banner').style.display = 'none';
+    document.getElementById('turn-badge').textContent = 'Placing aircraft';
+    document.getElementById('turn-badge').className = 'turn-badge waiting';
+    if (gameInfo) document.getElementById('game-title').textContent =
+      gameInfo.hostName + (gameInfo.guestName ? ' vs ' + gameInfo.guestName : ' — waiting for opponent');
+    App.showScreen('game');
+    App.renderPlacement();
+  },
+
+  renderPlacement() {
+    const na = gameInfo ? gameInfo.settings.na : settings.na;
+    const bs = gameInfo ? gameInfo.settings.bs : settings.bs;
+    let h = '';
+
+    if (!gameInfo || !gameInfo.guestName) {
+      h += `<div class="phase-banner">Waiting for opponent to join... Share the link from the lobby.</div>`;
+    } else {
+      h += `<div class="phase-banner">Place your <b>${na} aircraft</b> — fastest to finish goes first!</div>`;
+    }
+
+    if (locked && lockedValid) h += `<div class="info-bar good">Position locked — <b>Confirm</b> or Enter to place. R to rotate.</div>`;
+    else if (locked && !lockedValid) h += `<div class="info-bar bad">Invalid position — overlapping or out of bounds.</div>`;
+    else h += `<div class="info-bar neutral">Hover to preview · Click to lock · Confirm to place · R to rotate</div>`;
+
+    h += `<div class="place-controls">
+      <button onclick="App.rot()">Rotate (R) — ${DIRS[ri]}</button>
+      ${locked && lockedValid ? `<button class="confirm-btn" onclick="App.confirmPlace()">Confirm (Enter)</button>` : ''}
+      ${locked ? `<button onclick="App.cancelPlace()">Cancel (Esc)</button>` : ''}
+    </div>`;
+
+    h += `<div class="ac-chips">`;
+    for (let i = 0; i < na; i++) {
+      const done = i < myPlaced.length, active = i === myPlaced.length;
+      h += `<span class="ac-chip${done?' done':active?' active':''}">${done?'✓ ':active?'► ':''}Aircraft ${i+1}</span>`;
+    }
+    h += `</div>`;
+    h += `<div class="boards-row"><div class="board-section"><div class="board-title">Your board</div>${App.buildPlaceGrid(bs, na)}</div></div>`;
+    document.getElementById('game-content').innerHTML = h;
+    App.attachPlaceListeners();
+  },
+
+  showWaitingForOpponent() {
+    let h = `<div class="phase-banner"><b>All aircraft placed!</b> Waiting for opponent to finish placement...</div>`;
+    h += `<div class="boards-row"><div class="board-section"><div class="board-title">Your fleet</div>${App.buildStaticFleet()}</div></div>`;
+    document.getElementById('game-content').innerHTML = h;
+  },
+
+  buildStaticFleet() {
+    const bs = gameInfo ? gameInfo.settings.bs : settings.bs;
+    const pSet = new Set(), pHead = new Set();
+    myPlaced.forEach(a => {
+      gc(a.dir,a.r,a.c).forEach(([r,c]) => pSet.add(r+','+c));
+      const [hr,hc] = gh(a.dir,a.r,a.c); pHead.add(hr+','+hc);
+    });
+    let h = `<table class="grid"><tr><td class="hdr"></td>`;
+    for (let c=1;c<=bs;c++) h += `<td class="hdr">${CL[c]}</td>`;
+    h += `</tr>`;
+    for (let r=0;r<bs;r++) {
+      h += `<tr><td class="hdr">${r+1}</td>`;
+      for (let c=0;c<bs;c++) {
+        const k=r+','+c;
+        let cl = pSet.has(k) ? (pHead.has(k)?'ac-head':'ac-body') : '';
+        h += `<td class="${cl}"></td>`;
+      }
+      h += `</tr>`;
+    }
+    return h + `</table>`;
+  },
+
+  startBattle(firstPlayer) {
+    document.getElementById('turn-badge').textContent = myTurn ? 'Your turn' : "Opponent's turn";
+    document.getElementById('turn-badge').className = 'turn-badge' + (myTurn ? '' : ' waiting');
+    App.renderBattle(`${firstPlayer} goes first!`);
+  },
+
+  renderBattle(banner) {
+    const na = gameInfo.settings.na;
+    const apt = gameInfo.settings.apt;
+    let h = '';
+    if (banner) h += `<div class="phase-banner">${banner}</div>`;
+
+    h += `<div class="stats-row">
+      <div class="stat-box"><div class="sv">${myDestroyed}/${na}</div><div class="sl">You destroyed</div></div>
+      <div class="stat-box"><div class="sv">${oppDestroyed}/${na}</div><div class="sl">They destroyed</div></div>
+    </div>`;
+
+    if (myTurn) {
+      h += `<div class="attempts-row">`;
+      for (let i=0;i<apt;i++) h += `<div class="att-dot ${i<(apt-attemptsLeft)?'used':'avail'}"></div>`;
+      h += `</div>`;
+      h += `<div class="shot-controls">
+        <input id="ci" maxlength="3" placeholder="e.g. D6" onkeydown="if(event.key==='Enter')App.shootCoord()">
+        <button class="shoot-btn" onclick="App.shootCoord()">Shoot</button>
+        <button onclick="App.endTurn()">End turn</button>
+      </div>`;
+    }
+
+    h += `<div class="boards-row">
+      <div class="board-section">
+        <div class="board-title">Your fleet</div>
+        <div class="board-sub">Opponent's attacks shown</div>
+        ${App.buildOwnBoard()}
+      </div>
+      <div class="board-section">
+        <div class="board-title">${myRole==='host'?gameInfo.guestName:gameInfo.hostName}'s board</div>
+        <div class="board-sub">${myTurn?'Click to shoot — hidden':'Waiting for opponent'}</div>
+        ${App.buildAtkBoard()}
+      </div>
+    </div>`;
+
+    h += `<div class="legend-row">
+      <div class="leg"><span class="leg-sq" style="background:#2563eb">■</span>Head</div>
+      <div class="leg"><span class="leg-sq" style="background:#1d4ed8">■</span>Body</div>
+      <div class="leg"><span class="leg-sq" style="background:#dc2626;color:#fff">D</span>Destroyed</div>
+      <div class="leg"><span class="leg-sq" style="background:#d97706;color:#fff">H</span>Hit</div>
+      <div class="leg"><span class="leg-sq" style="background:#374151;color:#6b7280">M</span>Miss</div>
+    </div>`;
+
+    h += `<div class="chat-box">
+      <div class="chat-msgs" id="chat-msgs"></div>
+      <div class="chat-input-row">
+        <input id="chat-in" placeholder="Say something..." onkeydown="if(event.key==='Enter')App.sendChat()">
+        <button onclick="App.sendChat()">Send</button>
+      </div>
+    </div>`;
+
+    document.getElementById('game-content').innerHTML = h;
+    App.renderChat();
+    App.attachAtkListener();
+  },
+
+  handleShotResult(msg) {
+    if (msg.shooter === myRole) {
+      myShots[msg.r+','+msg.c] = msg.result;
+      if (msg.result === 'D') myDestroyed++;
+      attemptsLeft = msg.attemptsLeft || 0;
+      if (msg.turnChange) { myTurn = false; attemptsLeft = gameInfo.settings.apt; }
+    } else {
+      oppShots[msg.r+','+msg.c] = msg.result;
+      if (msg.result === 'D') oppDestroyed++;
+      if (msg.turnChange) { myTurn = true; attemptsLeft = msg.attemptsLeft; }
+    }
+
+    document.getElementById('turn-badge').textContent = myTurn ? 'Your turn' : "Opponent's turn";
+    document.getElementById('turn-badge').className = 'turn-badge' + (myTurn ? '' : ' waiting');
+
+    if (msg.gameOver) {
+      App.showGameOver(msg.winner, msg.hostFleet, msg.guestFleet);
+      return;
+    }
+    App.renderBattle(null);
+  },
+
+  showGameOver(winner, hostFleet, guestFleet) {
+    gameOver = true;
+    const iWon = (myRole === 'host' && winner === gameInfo.hostName) ||
+                 (myRole === 'guest' && winner === gameInfo.guestName);
+    let h = `<div class="gameover-banner">
+      <h2>${iWon ? '🏆 You win!' : '💀 You lost!'}</h2>
+      <p>${winner} destroyed all aircraft!</p>
+      <button class="btn btn-primary" onclick="App.showLobby()" style="width:auto;padding:8px 20px">Back to lobby</button>
+    </div>`;
+    document.getElementById('game-content').innerHTML = h;
+    document.getElementById('turn-badge').textContent = iWon ? 'Winner!' : 'Game over';
+  },
+
+  buildPlaceGrid(bs, na) {
+    const pSet=new Set(),pHead=new Set();
+    myPlaced.forEach(a=>{gc(a.dir,a.r,a.c).forEach(([r,c])=>pSet.add(r+','+c));const[hr,hc]=gh(a.dir,a.r,a.c);pHead.add(hr+','+hc);});
+    let lkSet=new Set(),lkHeadKey=null,ghostSet=new Set(),ghostBad=false;
+    if(locked){
+      const cells=gc(DIRS[ri],locked[0],locked[1]);
+      const[lhr,lhc]=gh(DIRS[ri],locked[0],locked[1]);
+      cells.forEach(([r,c])=>lkSet.add(r+','+c));lkHeadKey=lhr+','+lhc;
+    } else if(hov){
+      const cells=gc(DIRS[ri],hov[0],hov[1]);
+      ghostBad=!iv(cells,bs)||ov(cells,apc(myPlaced));
+      cells.forEach(([r,c])=>ghostSet.add(r+','+c));
+    }
+    let h=`<table class="grid" id="pgrid"><tr><td class="hdr"></td>`;
+    for(let c=1;c<=bs;c++)h+=`<td class="hdr">${CL[c]}</td>`;h+=`</tr>`;
+    for(let r=0;r<bs;r++){
+      h+=`<tr><td class="hdr">${r+1}</td>`;
+      for(let c=0;c<bs;c++){
+        const k=r+','+c;let cl='placeable';
+        if(lkSet.has(k))cl=lockedValid?(k===lkHeadKey?'locked-ok-head':'locked-ok'):'locked-bad';
+        else if(pSet.has(k))cl=pHead.has(k)?'ac-head':'ac-body';
+        else if(ghostSet.has(k))cl=ghostBad?'ghost-invalid':'ghost';
+        h+=`<td class="${cl}" data-r="${r}" data-c="${c}"></td>`;
+      }h+=`</tr>`;
+    }
+    return h+`</table>`;
+  },
+
+  buildOwnBoard() {
+    const bs=gameInfo.settings.bs;
+    const os=new Set(),hs=new Set();
+    myPlaced.forEach(a=>{gc(a.dir,a.r,a.c).forEach(([r,c])=>os.add(r+','+c));const[hr,hc]=gh(a.dir,a.r,a.c);hs.add(hr+','+hc);});
+    let h=`<table class="grid"><tr><td class="hdr"></td>`;
+    for(let c=1;c<=bs;c++)h+=`<td class="hdr">${CL[c]}</td>`;h+=`</tr>`;
+    for(let r=0;r<bs;r++){
+      h+=`<tr><td class="hdr">${r+1}</td>`;
+      for(let c=0;c<bs;c++){
+        const k=r+','+c,oa=oppShots[k];let cl='',tx='';
+        if(os.has(k)){cl=hs.has(k)?'ac-head':'ac-body';if(oa){cl='own-'+oa;tx=oa;}}
+        else if(oa){cl='own-'+oa;tx=oa;}
+        h+=`<td class="${cl}">${tx}</td>`;
+      }h+=`</tr>`;
+    }
+    return h+`</table>`;
+  },
+
+  buildAtkBoard() {
+    const bs=gameInfo.settings.bs;
+    let h=`<table class="grid" id="agrid"><tr><td class="hdr"></td>`;
+    for(let c=1;c<=bs;c++)h+=`<td class="hdr">${CL[c]}</td>`;h+=`</tr>`;
+    for(let r=0;r<bs;r++){
+      h+=`<tr><td class="hdr">${r+1}</td>`;
+      for(let c=0;c<bs;c++){
+        const k=r+','+c,s=myShots[k];let cl='',tx='';
+        if(s){cl='opp-'+s;tx=s;}else cl='shootable';
+        h+=`<td class="${cl}" data-r="${r}" data-c="${c}">${tx}</td>`;
+      }h+=`</tr>`;
+    }
+    return h+`</table>`;
+  },
+
+  attachPlaceListeners() {
+    const pg=document.getElementById('pgrid');if(!pg)return;
+    pg.addEventListener('mouseover',e=>{
+      const td=e.target.closest('td[data-r]');if(!td||locked)return;
+      const r=+td.dataset.r,c=+td.dataset.c;
+      if(!hov||hov[0]!==r||hov[1]!==c){hov=[r,c];App.renderPlacement();}
+    });
+    pg.addEventListener('mouseleave',()=>{if(!locked&&hov){hov=null;App.renderPlacement();}});
+    pg.addEventListener('click',e=>{
+      const td=e.target.closest('td[data-r]');if(!td)return;
+      const r=+td.dataset.r,c=+td.dataset.c;
+      if(locked&&locked[0]===r&&locked[1]===c){if(lockedValid)App.confirmPlace();return;}
+      locked=[r,c];hov=null;App.checkLocked();App.renderPlacement();
+    });
+  },
+
+  attachAtkListener() {
+    const ag=document.getElementById('agrid');if(!ag||!myTurn)return;
+    ag.addEventListener('click',e=>{
+      const td=e.target.closest('td[data-r]');if(!td)return;
+      App.shoot(+td.dataset.r,+td.dataset.c);
+    });
+  },
+
+  checkLocked() {
+    if(!locked)return;
+    const bs=gameInfo?gameInfo.settings.bs:settings.bs;
+    const cells=gc(DIRS[ri],locked[0],locked[1]);
+    lockedValid=iv(cells,bs)&&!ov(cells,apc(myPlaced));
+  },
+
+  rot() {ri=(ri+1)%4;if(locked)App.checkLocked();App.renderPlacement();},
+  cancelPlace() {locked=null;lockedValid=false;hov=null;App.renderPlacement();},
+  confirmPlace() {
+    if(!locked||!lockedValid)return;
+    ws.send(JSON.stringify({type:'place',r:locked[0],c:locked[1],dir:DIRS[ri]}));
+    locked=null;lockedValid=false;hov=null;
+  },
+
+  shoot(r,c) {
+    if(!myTurn||gameOver)return;
+    const k=r+','+c;if(myShots[k])return;
+    ws.send(JSON.stringify({type:'shoot',r,c}));
+  },
+
+  shootCoord() {
+    const inp=document.getElementById('ci');if(!inp)return;
+    const s=inp.value.trim().toUpperCase();if(!s||s.length<2)return;
+    const bs=gameInfo.settings.bs;
+    const col=s.charCodeAt(0)-64,row=parseInt(s.slice(1));
+    if(isNaN(row)||col<1||col>bs||row<1||row>bs){inp.style.borderColor='#ef4444';return;}
+    inp.style.borderColor='';inp.value='';
+    App.shoot(row-1,col-1);
+  },
+
+  endTurn() {
+    myTurn=false;
+    document.getElementById('turn-badge').textContent="Opponent's turn";
+    document.getElementById('turn-badge').className='turn-badge waiting';
+    ws.send(JSON.stringify({type:'shoot',r:-1,c:-1})); // signal end turn — server handles
+    App.renderBattle(null);
+  },
+
+  sendChat() {
+    const inp=document.getElementById('chat-in');if(!inp||!inp.value.trim())return;
+    ws.send(JSON.stringify({type:'chat',text:inp.value.trim()}));
+    inp.value='';
+  },
+
+  renderChat() {
+    const el=document.getElementById('chat-msgs');if(!el)return;
+    el.innerHTML=chatMsgs.slice(-20).map(m=>`<div><b>${m.from}:</b> ${m.text}</div>`).join('');
+    el.scrollTop=el.scrollHeight;
+  }
+};
+
+document.addEventListener('keydown',e=>{
+  if(e.key==='r'||e.key==='R'){if(document.getElementById('pgrid'))App.rot();}
+  if(e.key==='Enter'&&locked&&lockedValid)App.confirmPlace();
+  if(e.key==='Escape')App.cancelPlace();
+});
+
+App.init();
+</script>
+</body>
+</html>
