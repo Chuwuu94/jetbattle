@@ -14,8 +14,11 @@ const wss = new WebSocket.Server({ server });
 const PORT = process.env.PORT || 3000;
 const JWT_SECRET = process.env.JWT_SECRET || 'jetbattle-secret-change-in-production';
 
-// Database setup
-const db = new Database('jetbattle.db');
+// Database setup — use persistent volume if available (Railway), else local
+const DB_DIR = process.env.RAILWAY_VOLUME_MOUNT_PATH || __dirname;
+const DB_PATH = path.join(DB_DIR, 'jetbattle.db');
+console.log('Database path:', DB_PATH);
+const db = new Database(DB_PATH);
 
 db.exec(`
   CREATE TABLE IF NOT EXISTS users (

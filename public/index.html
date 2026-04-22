@@ -193,7 +193,10 @@ table.grid td.shootable:hover{background:#1e3a5f}
   <div class="game-wrap">
     <div class="game-header">
       <span class="title" id="game-title">Jet Battle</span>
-      <span class="turn-badge" id="turn-badge">—</span>
+      <div style="display:flex;align-items:center;gap:10px">
+        <span class="turn-badge" id="turn-badge">—</span>
+        <button onclick="App.exitGame()" style="padding:4px 10px;font-size:12px;background:#450a0a;border:1px solid #7f1d1d;color:#fca5a5;border-radius:6px;cursor:pointer">✕ Exit</button>
+      </div>
     </div>
     <div id="disconnect-banner" class="disconnect-banner" style="display:none">Opponent disconnected. Waiting for reconnect...</div>
     <div id="game-content"></div>
@@ -715,6 +718,17 @@ const App = {
     if(!locked||!lockedValid)return;
     ws.send(JSON.stringify({type:'place',r:locked[0],c:locked[1],dir:DIRS[ri]}));
     locked=null;lockedValid=false;hov=null;
+    App.renderPlacement();
+  },
+
+  exitGame() {
+    if(ws){ws.close();}
+    gameId=null;myRole=null;gameInfo=null;
+    myPlaced=[];myShots={};oppShots={};
+    myDestroyed=0;oppDestroyed=0;
+    myTurn=false;locked=null;lockedValid=false;hov=null;
+    gameOver=false;
+    App.showLobby();
   },
 
   shoot(r,c) {
