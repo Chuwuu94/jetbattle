@@ -374,22 +374,38 @@ const App = {
   connectWS(gid) {
     const proto = location.protocol === 'https:' ? 'wss' : 'ws';
     ws = new WebSocket(proto + '://' + location.host);
-
     ws.onopen = () => {
       ws.send(JSON.stringify({ type: 'auth', token }));
+      // Send ping every 20 seconds to keep connection alive
+      if (window._pingInterval) clearInterval(window._pingInterval);
+      window._pingInterval = setInterval(() => {
+        if (ws && ws.readyState === WebSocket.OPEN) {
+          ws.send(JSON.stringify({ type: 'ping' }));
+        }
+      }, 20000);
     };
-
     ws.onmessage = (e) => {
       const msg = JSON.parse(e.data);
       App.handleWS(msg);
     };
-
     ws.onclose = () => {
-      document.getElementById('disconnect-banner').style.display = 'block';
+      if (window._pingInterval) clearInterval(window._pingInterval);
+      // Auto-reconnect if game is in progress
+      if (gameId && !gameOver) {
+        document.getElementById('disconnect-banner').style.display = 'block';
+        document.getElementById('disconnect-banner').textContent = 'Connection lost — reconnecting...';
+        setTimeout(() => {
+          if (gameId && !gameOver) App.connectWS(gid);
+        }, 3000);
+      }
+    };
+    ws.onerror = () => {
+      if (ws) ws.close();
     };
   },
 
   handleWS(msg) {
+    if (msg.type === 'pong') return; // heartbeat response, ignore
     if (msg.type === 'authed') {
       ws.send(JSON.stringify({ type: 'join', gameId }));
       return;

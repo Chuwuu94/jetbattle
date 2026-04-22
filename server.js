@@ -100,10 +100,26 @@ function broadcast(gameId, msg, excludeId = null) {
   [game.hostId, game.guestId].forEach(uid => { if (uid && uid !== excludeId) sendTo(uid, msg); });
 }
 
+// Heartbeat — ping all clients every 25 seconds to keep connections alive
+setInterval(() => {
+  wss.clients.forEach(ws => {
+    if (ws.isAlive === false) { ws.terminate(); return; }
+    ws.isAlive = false;
+    ws.ping();
+  });
+}, 25000);
+
 wss.on('connection', (ws) => {
+  ws.isAlive = true;
+  ws.on('pong', () => { ws.isAlive = true; });
+
   let userId = null, currentGameId = null;
   ws.on('message', async (raw) => {
     let msg; try { msg = JSON.parse(raw); } catch { return; }
+
+    // Client-side ping
+    if (msg.type === 'ping') { ws.send(JSON.stringify({ type: 'pong' })); return; }
+
     if (msg.type === 'auth') {
       const user = verifyToken(msg.token);
       if (!user) { ws.send(JSON.stringify({ type: 'error', message: 'Invalid token' })); return; }
@@ -190,7 +206,15 @@ wss.on('connection', (ws) => {
   });
   ws.on('close', () => {
     if (userId) userSockets.delete(userId);
-    if (currentGameId) broadcast(currentGameId, { type: 'opponent_disconnected' }, userId);
+    if (currentGameId) {
+      // Wait 5 seconds before telling opponent — allows brief reconnects
+      setTimeout(() => {
+        const stillConnected = userSockets.has(userId);
+        if (!stillConnected) {
+          broadcast(currentGameId, { type: 'opponent_disconnected' }, userId);
+        }
+      }, 5000);
+    }
   });
 });
 
