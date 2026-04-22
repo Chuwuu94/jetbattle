@@ -395,15 +395,18 @@ const App = {
     if (msg.type === 'joined') {
       myRole = msg.role;
       gameInfo = msg.game;
+      if (msg.role === 'host') {
+        // Host stays on lobby screen with invite link visible — wait for opponent
+        return;
+      }
+      // Guest goes straight to placement
       App.startPlacement();
       return;
     }
 
     if (msg.type === 'game_start') {
       gameInfo = msg.game;
-      document.getElementById('game-title').textContent =
-        gameInfo.hostName + ' vs ' + gameInfo.guestName;
-      App.renderPlacement();
+      App.startPlacement();
       return;
     }
 
